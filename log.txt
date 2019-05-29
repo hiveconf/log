@@ -1,2 +1,14 @@
-das
-#log
+hdfs dfs -mkdir /test
+hdfs dfs -put log.txt /test
+hdfs dfs -get /test/log.txt /home/user_name
+hdfs dfs -ls /test
+hdfs dfs -cat /test/log.txt
+hdfs dfs -chmod 777 /test/log.txt
+hdfs dfs -mkdir /new
+hdfs dfs -cp /test/log.txt /new
+hdfs dfs -copyFromLocal log.txt /test
+hdfs dfs -copyToLocal /test/log1.txt log1.txt
+hdfs dfs -tail /test/log2.txt
+hdfs dfs -du /test/log2.txt
+hdfs dfs -mv /test/log2.txt /new
+hdfs dfs -rm /new/log.txt
