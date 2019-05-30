@@ -1,0 +1,41 @@
+pig -x local
+
+/home/hduser/ml-100k
+
+ratings = LOAD '/home/hduser/ml-100k/u.data' AS (userID:int, movieID:int, rating:int, ratingTime:int)
+
+
+metadata = LOAD '/home/hduser/ml-100k/u.item' USING PigStorage('|')AS (movieID:int, movieTitle:chararray, releaseDate:chararray,videoRelease:chararray,imdbLink:chararray);
+DUMP metadata;
+
+ratingsByMovie = GROUP ratings BY movieID;
+DUMP ratingsByMovie;
+
+
+1. List all the movies and the number of ratings
+Ratings_count = FOREACH ratingsByMovie GENERATE group as movieID,COUNT(ratings.rating) AS Ratingcount;
+DUMP Ratings_count;
+
+2. List all the users and the number of ratings they have done for a movie
+ratingsByuser = GROUP ratings BY userID;
+DUMP ratingsByuser;
+user_rating_count = FOREACH ratingsByuser GENERATE group as userID,COUNT(ratings.rating) AS Rating_count;
+dump user_rating_count;
+
+3. List all the Movie IDs which have been rated (Movie Id with at least one user rating it)
+Ratings_count1 = FILTER Ratings_count BY Ratingcount>0;
+DUMP Ratings_count1;
+
+4. List all the Users who have rated the movies (Users who have rated at least one movie)
+user_rating_count = FOREACH ratingsByuser GENERATE group as userID,COUNT(ratings.rating) AS Rating_count;
+Ratings_count2 = FILTER user_rating_count BY Rating_count>0;
+DUMP Ratings_count2;
+
+5. List of all the User with the max, min, average ratings they have given against any movie
+avgRatingsuser = FOREACH ratingsByuser GENERATE group as movieID, AVG(ratings.rating) AS avgRating,MAX(ratings.rating) AS maxRating,MIN(ratings.rating) AS minRating;
+DUMP avgRatingsuser;
+
+6. List all the Movies with the max, min, average ratings given by any user
+Ratingsbymovie = FOREACH ratingsByMovie GENERATE group as movieID, AVG(ratings.rating) AS avg_Rating,MAX(ratings.rating) AS maxRating,MIN(ratings.rating) AS minRating;
+DUMP Ratingsbymovie;
+

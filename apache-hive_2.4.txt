@@ -1,0 +1,112 @@
+
+
+create external table movieapp12(custid int, movieid int, genreid int , `time` string,recommended string, activity int, rating int , price float) ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe' LOCATION '/user/movie/';
+
+Select * from movieapp12 limit 10;
+
+
+1. Write a query to select only those clicks which correspond to starting, browsing, completing, or
+purchasing movies. Use a CASE statement to transform the RECOMMENDED column into integers
+where ‘Y’ is 1 and ‘N’ is 0. Also, ensure GENREID is not null. Only include the first 25 rows.
+
+SELECT custid, movieid, CASE WHEN genreid > 0 THEN genreid ELSE -1 END genreid, `time`, CASE recommended WHEN 'Y' THEN 1 ELSE 0 END recommended, activity,
+price FROM movieapp12 WHERE activity IN (2,4,5,11) LIMIT 25;
+
+
+2. Write a query to select the customer ID, movie ID, recommended state and most recent rating for each
+movie.
+
+SELECT
+m1.custid,
+m1.movieid,
+CASE WHEN m1.genreid > 0 THEN m1.genreid ELSE -1 END genreid,
+m1.`time`,
+CASE m1.recommended WHEN 'Y' THEN 1 ELSE 0 END recommended,
+m1.activity,
+m1.rating
+FROM movieapp12 m1
+JOIN
+(SELECT
+custid,
+movieid,
+CASE WHEN genreid > 0 THEN genreid ELSE -1 END genreid,
+MAX(`time`) max_time,
+activity
+FROM movieapp12
+GROUP BY custid,
+movieid,
+genreid,
+activity
+) m2
+ON (
+m1.custid = m2.custid
+AND m1.movieid = m2.movieid
+AND CASE WHEN m1.genreid > 0 THEN m1.genreid ELSE -1 END = CASE WHEN m2.genreid > 0 THEN m2.genreid ELSE -1 END
+AND m1.`time` = m2.max_time
+AND m1.activity = 1
+AND m2.activity = 1
+) LIMIT 25;
+
+
+3. Load the results of the previous two queries into a staging table. First, create the staging table:
+
+
+CREATE TABLE movieapp_log_stage ( custId int,
+movieId int,
+genreId int,
+`time` string,
+recommended int,
+activity int,
+rating int,
+sales float )ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'; 
+
+
+4. Next, load the results of the queries into the staging table:
+
+
+INSERT OVERWRITE TABLE movieapp_log_stage
+SELECT * FROM (
+SELECT custid,
+movieid,
+CASE WHEN genreid > 0 THEN genreid ELSE -1 END genreid,
+`time`,
+CAST((CASE recommended WHEN 'Y' THEN 1 ELSE 0 END) AS INT) recommended,
+activity,
+cast(null AS INT) rating,
+price
+FROM movieapp12
+WHERE activity IN (2,4,5,11)
+UNION ALL
+SELECT
+m1.custid,
+m1.movieid,
+CASE WHEN m1.genreid > 0 THEN m1.genreid ELSE -1 END genreid,
+m1.`time`,
+CAST((CASE m1.recommended WHEN 'Y' THEN 1 ELSE 0 END) AS INT) recommended,
+m1.activity,
+m1.rating,
+cast(null as float) price
+FROM movieapp12 m1
+JOIN
+(SELECT
+custid,
+movieid,
+CASE WHEN genreid > 0 THEN genreid ELSE -1 END genreid,
+MAX(`time`) max_time,
+activity
+FROM movieapp12
+GROUP BY custid,
+movieid,
+genreid,
+activity
+) m2
+ON (
+m1.custid = m2.custid
+AND m1.movieid = m2.movieid
+AND CASE WHEN m1.genreid > 0 THEN m1.genreid ELSE -1 END = CASE WHEN m2.genreid > 0 THEN m2.genreid ELSE -1 END
+AND m1.`time` = m2.max_time
+AND m1.activity = 1
+AND m2.activity = 1
+)
+) union_result;
+
